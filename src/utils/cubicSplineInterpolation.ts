@@ -21,7 +21,7 @@ export class CubicPoly {
     }
 }
 
-type CubicSplineInterpolationResult = Array<{
+export type CubicSplineInterpolationResult = Array<{
 	polynomial: CubicPoly,
 	range: {
 		xmin: number,
