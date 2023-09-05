@@ -21,7 +21,15 @@ export class CubicPoly {
     }
 }
 
-export const cubicSplineInterpolation = (p : Point[]) => {
+type CubicSplineInterpolationResult = Array<{
+	polynomial: CubicPoly,
+	range: {
+		xmin: number,
+		xmax: number
+	}
+}>
+
+export const cubicSplineInterpolation = (p : Point[]) : CubicSplineInterpolationResult => {
 	let row = 0;
 	const solutionIndex = (p.length - 1) * 4;
 
@@ -142,7 +150,7 @@ const rref = (mat : number[][]) => {
 }
 
 
-export const calcBezierControlPoints = (firstPoint : Point, lastPoint : Point, cubicPoly : CubicPoly) => {
+export const calcBezierControlPoints = (firstPoint : Point, lastPoint : Point, cubicPoly : CubicPoly) : [Point, Point] => {
 	const xDiff = lastPoint.x - firstPoint.x;
 	const x1 = firstPoint.x + xDiff / 3.0;
 	const x2 = firstPoint.x + 2.0 * xDiff / 3.0;
@@ -171,3 +179,13 @@ export const calcBezierControlPoints = (firstPoint : Point, lastPoint : Point, c
 
 	return [p2, p3];
 };
+
+export const getSVGPathForSpline = (cubicPolynomials: CubicSplineInterpolationResult, points: Point[]) : string => {
+	let path = [];
+	path.push(`M${points[0].x},${points[0].y}`)
+	for (let i = 1; i < points.length; i++) {
+	  const controlPoints = calcBezierControlPoints(points[i-1], points[i], cubicPolynomials[i-1].polynomial);
+	  path.push(`C ${controlPoints[0].x},${controlPoints[0].y} ${controlPoints[1].x},${controlPoints[1].y} ${points[i].x},${points[i].y}`);
+	}
+	return path.join(' ');
+}
