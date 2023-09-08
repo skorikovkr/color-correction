@@ -7,11 +7,10 @@ const size = {
   width: 500,
   height: 500
 };
+const pointRadius = 5;
 
 const initialPoints : Point[] = [
   { x: 0, y: 0 },
-  { x: 50, y: 50 },
-  { x: 50, y: 100 },
   { x: size.height, y: size.width },
 ]
 
@@ -41,9 +40,9 @@ const handleChangeCoords = (e : MouseEvent) => {
   if (currentDraggablePointIndex.value === null) return;
   const tempPoints = [...points.value];
   if (currentDraggablePointIndex.value > 0 && currentDraggablePointIndex.value < (points.value.length - 1)) {
-    tempPoints[currentDraggablePointIndex.value].x = e.clientX;
+    tempPoints[currentDraggablePointIndex.value].x = e.clientX - pointRadius;
   }
-  tempPoints[currentDraggablePointIndex.value].y = e.clientY;
+  tempPoints[currentDraggablePointIndex.value].y = e.clientY - pointRadius;
 }
 
 const handleStartDragging = (pointIndex : number) => {
@@ -74,6 +73,7 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
         v-for="(p, i) in points" 
         :key="i"
         :point="p" 
+        :radius="pointRadius"
         @startDragging="() => handleStartDragging(i)"
       />
     </svg>
