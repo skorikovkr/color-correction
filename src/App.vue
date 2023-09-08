@@ -2,6 +2,7 @@
 import { computed, ref, Ref } from 'vue';
 import DraggablePoint from './components/DraggablePoint.vue';
 import { Point, cubicSplineInterpolation, getSVGPathForSpline } from "./utils/cubicSplineInterpolation";
+import { solveCubic } from './utils/cubicSolver';
 
 type BlockableDraggablePoint = {
   x: number,
@@ -35,6 +36,7 @@ const sortedPoints = computed(() => {
   tempPoints.sort((p1, p2) => p1.x - p2.x);
   return tempPoints;
 });
+
 const currentDraggablePointIndex : Ref<number | null> = ref(null);
 
 const cubicPolynomials = computed(() => {
@@ -50,6 +52,36 @@ const cubicPolynomials = computed(() => {
   return cubicSplineInterpolation(tempPoints);
 });
 const svgPath = computed(() => getSVGPathForSpline(cubicPolynomials.value, sortedPoints.value));
+
+// Line to show culling negatives to zero or max value
+const curveOutOfBoundPoints = computed(() => {
+  const pointsOutOfBounds : Point[][] = [];
+  // with lower bound
+  cubicPolynomials.value.forEach(p => {
+    const solutionsWithZero = solveCubic(p.polynomial.A, p.polynomial.B, p.polynomial.C, p.polynomial.D);
+    if (solutionsWithZero.length < 2) return;  // avoid unnecessary calculations
+    const cubicSolutions : Point[] = [];
+    solutionsWithZero.forEach(point => {
+      if (point >= p.range.xmin && point <= p.range.xmax)
+        cubicSolutions.push({ x: point, y: 0 });
+    });
+    if (cubicSolutions.length == 2)  // we want to draw line between only two points
+      pointsOutOfBounds.push(cubicSolutions);
+  });
+  // with upper bound
+  cubicPolynomials.value.forEach(p => {
+    const solutionsWithMax = solveCubic(p.polynomial.A, p.polynomial.B, p.polynomial.C, p.polynomial.D - size.height);
+    if (solutionsWithMax.length < 2) return;  // avoid unnecessary calculations
+    const cubicSolutions : Point[] = [];
+    solutionsWithMax.forEach(point => {
+      if (point >= p.range.xmin && point <= p.range.xmax)
+        cubicSolutions.push({ x: point, y: size.height });
+    });
+    if (cubicSolutions.length == 2)
+      pointsOutOfBounds.push(cubicSolutions);
+  });
+  return pointsOutOfBounds;
+});
 
 const handleChangeCoords = (e : MouseEvent) => {
   if (currentDraggablePointIndex.value === null) return;
@@ -88,13 +120,17 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
 </script>
 
 <template>
-  <div :style="{ height: size.height+'px', width: size.width+'px', backgroundColor: '#5C5C5C', position: 'relative'}"
+  <div class="curve-canvas-container" :style="{ height: size.height+'px', width: size.width+'px' }"
     @mouseup="handleStopDragging"
     @mousemove="handleChangeCoords"
     @mousedown="handleNotPointMouseDown"
   >
-    <svg class="curve-canvas" :style="{height: '100%', width: '100%', backgroundColor: '#5C5C5C'}">
+    <svg class="curve-canvas">
       <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
+      <line v-for="p in curveOutOfBoundPoints" 
+        :x1="p[0].x" :y1="p[0].y" :x2="p[1].x" :y2="p[1].y" 
+        stroke="#FAFAFA" stroke-width="4"
+      />
       <DraggablePoint 
         v-for="(p, i) in points" 
         :key="i"
@@ -108,8 +144,16 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
 </template>
 
 <style scoped>
+.curve-canvas-container {
+  background-color: #5C5C5C;
+  border: 5px solid #5C5C5C;
+}
+
 .curve-canvas {
+  background-color: #5C5C5C;
   transform-origin: center center;
   transform: scale(1, -1);
+  height: 100%;
+  width: 100%;
 }
 </style>
