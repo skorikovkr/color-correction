@@ -10,38 +10,40 @@ const size = {
 
 const initialPoints : Point[] = [
   { x: 0, y: 0 },
+  { x: 50, y: 50 },
+  { x: 50, y: 100 },
   { x: size.height, y: size.width },
 ]
 
 const points = ref(initialPoints);
+const sortedPoints = computed(() => {
+  const tempPoints = [...points.value];
+  tempPoints.sort((p1, p2) => p1.x - p2.x);
+  return tempPoints;
+});
 const currentDraggablePointIndex : Ref<number | null> = ref(null);
 
-const cubicPolynomials = computed(() => cubicSplineInterpolation(points.value));
-const svgPath = computed(() => getSVGPathForSpline(cubicPolynomials.value, points.value));
-
-const isMonotonic = (seq : Point[]) => seq.every((e, i, a) => i ? e.x >= a[i-1].x : true) || seq.every((e, i, a) => i ? e.x <= a[i-1].x : true);
+const cubicPolynomials = computed(() => {
+  let prevPoint = sortedPoints.value[0];
+  const tempPoints : Point[] = [{ x : sortedPoints.value[0].x, y: sortedPoints.value[0].y }];
+  for (let i = 1; i < sortedPoints.value.length; i++) {
+    if (prevPoint.x === sortedPoints.value[i].x)
+      tempPoints.push({ x : sortedPoints.value[i].x + 1, y: sortedPoints.value[i].y });
+    else
+      tempPoints.push({ x : sortedPoints.value[i].x, y: sortedPoints.value[i].y });
+    prevPoint = sortedPoints.value[i];
+  }
+  return cubicSplineInterpolation(tempPoints);
+});
+const svgPath = computed(() => getSVGPathForSpline(cubicPolynomials.value, sortedPoints.value));
 
 const handleChangeCoords = (e : MouseEvent) => {
   if (currentDraggablePointIndex.value === null) return;
   const tempPoints = [...points.value];
-  if (currentDraggablePointIndex.value !== 0 && currentDraggablePointIndex.value !== (points.value.length - 1)) {
+  if (currentDraggablePointIndex.value > 0 && currentDraggablePointIndex.value < (points.value.length - 1)) {
     tempPoints[currentDraggablePointIndex.value].x = e.clientX;
   }
   tempPoints[currentDraggablePointIndex.value].y = e.clientY;
-  if (!isMonotonic(tempPoints)) {
-    tempPoints.sort((p1, p2) => p1.x - p2.x);
-    currentDraggablePointIndex.value = tempPoints.findIndex(p => p.x === e.clientX && p.y === e.clientY);
-  }
-  let prevPoint = tempPoints[0];
-
-  // prevent distortion on points x equality
-  // ДОДЕЛАТЬ
-  for (let i = 1; i < tempPoints.length; i++) {
-    if (prevPoint.x === tempPoints[i].x)
-      tempPoints[i].x = tempPoints[i].x + 1;
-    prevPoint = tempPoints[i];
-  }
-  points.value = tempPoints;
 }
 
 const handleStartDragging = (pointIndex : number) => {
@@ -73,8 +75,7 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
         :key="i"
         :point="p" 
         @startDragging="() => handleStartDragging(i)"
-      >
-      </DraggablePoint>
+      />
     </svg>
   </div>
   <p>{{ points }}</p>
