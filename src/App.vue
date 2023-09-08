@@ -14,23 +14,19 @@ const size = {
   width: 500,
   height: 500
 };
-const bounds = {
-  x: [10, size.width - 10],
-  y: [10, size.height - 10],
-};
 const pointRadius = 5;
 
 const isOutOfBounds = (p: Point, ignoreXAxis = false, ignoreYAxis = false) => {
-  if (!ignoreXAxis && (p.x < bounds.x[0] || p.x > bounds.x[1]))
+  if (!ignoreXAxis && (p.x < 0 || p.x > size.width))
     return true;
-  if (!ignoreYAxis && (p.y < bounds.y[0] || p.y > bounds.y[1]))
+  if (!ignoreYAxis && (p.y < 0 || p.y > size.height))
     return true;
   return false;
 }
 
 const initialPoints : BlockableDraggablePoint[] = [
-  { x: bounds.x[0], y: bounds.y[0], blockX: true },
-  { x: bounds.x[1], y: bounds.y[1], blockX: true  },
+  { x: 0, y: 0, blockX: true },
+  { x: size.width, y: size.height, blockX: true  },
 ]
 
 const points = ref(initialPoints);
@@ -59,7 +55,7 @@ const handleChangeCoords = (e : MouseEvent) => {
   if (currentDraggablePointIndex.value === null) return;
   const currentPoint = points.value[currentDraggablePointIndex.value];
   const newXPosition = e.clientX - pointRadius;
-  const newYPosition = e.clientY - pointRadius;
+  const newYPosition = size.height - e.clientY + pointRadius;
   if (currentPoint.blockX) {
     if (!isOutOfBounds({ x: newXPosition, y: newYPosition }, true)) {
       currentPoint.y = newYPosition;
@@ -81,7 +77,7 @@ const handleStopDragging = () => {
 };
 
 const handleNotPointMouseDown = (e : MouseEvent) => {
-  const newPoint = { x: e.clientX, y: e.clientY };
+  const newPoint = { x: e.clientX - pointRadius, y: size.height - e.clientY + pointRadius };
   if (isOutOfBounds(newPoint))
     return;
   const tempPoints = [...points.value];
@@ -97,7 +93,7 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
     @mousemove="handleChangeCoords"
     @mousedown="handleNotPointMouseDown"
   >
-    <svg :style="{height: '100%', width: '100%', backgroundColor: '#5C5C5C'}">
+    <svg class="curve-canvas" :style="{height: '100%', width: '100%', backgroundColor: '#5C5C5C'}">
       <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
       <DraggablePoint 
         v-for="(p, i) in points" 
@@ -112,5 +108,8 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
 </template>
 
 <style scoped>
-
+.curve-canvas {
+  transform-origin: center center;
+  transform: scale(1, -1);
+}
 </style>
