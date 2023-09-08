@@ -3,15 +3,34 @@ import { computed, ref, Ref } from 'vue';
 import DraggablePoint from './components/DraggablePoint.vue';
 import { Point, cubicSplineInterpolation, getSVGPathForSpline } from "./utils/cubicSplineInterpolation";
 
+type BlockableDraggablePoint = {
+  x: number,
+  y: number,
+  blockX?: boolean,
+  blockY?: boolean
+};
+
 const size = {
   width: 500,
   height: 500
 };
+const bounds = {
+  x: [10, size.width - 10],
+  y: [10, size.height - 10],
+};
 const pointRadius = 5;
 
-const initialPoints : Point[] = [
-  { x: 0, y: 0 },
-  { x: size.height, y: size.width },
+const isOutOfBounds = (p: Point, ignoreXAxis = false, ignoreYAxis = false) => {
+  if (!ignoreXAxis && (p.x < bounds.x[0] || p.x > bounds.x[1]))
+    return true;
+  if (!ignoreYAxis && (p.y < bounds.y[0] || p.y > bounds.y[1]))
+    return true;
+  return false;
+}
+
+const initialPoints : BlockableDraggablePoint[] = [
+  { x: bounds.x[0], y: bounds.y[0], blockX: true },
+  { x: bounds.x[1], y: bounds.y[1], blockX: true  },
 ]
 
 const points = ref(initialPoints);
@@ -38,11 +57,19 @@ const svgPath = computed(() => getSVGPathForSpline(cubicPolynomials.value, sorte
 
 const handleChangeCoords = (e : MouseEvent) => {
   if (currentDraggablePointIndex.value === null) return;
-  const tempPoints = [...points.value];
-  if (currentDraggablePointIndex.value > 0 && currentDraggablePointIndex.value < (points.value.length - 1)) {
-    tempPoints[currentDraggablePointIndex.value].x = e.clientX - pointRadius;
+  const currentPoint = points.value[currentDraggablePointIndex.value];
+  const newXPosition = e.clientX - pointRadius;
+  const newYPosition = e.clientY - pointRadius;
+  if (currentPoint.blockX) {
+    if (!isOutOfBounds({ x: newXPosition, y: newYPosition }, true)) {
+      currentPoint.y = newYPosition;
+    }
+  } else {
+    if (!isOutOfBounds({ x: newXPosition, y: newYPosition })) {
+      currentPoint.x = newXPosition;
+      currentPoint.y = newYPosition;
+    }
   }
-  tempPoints[currentDraggablePointIndex.value].y = e.clientY - pointRadius;
 }
 
 const handleStartDragging = (pointIndex : number) => {
@@ -54,8 +81,11 @@ const handleStopDragging = () => {
 };
 
 const handleNotPointMouseDown = (e : MouseEvent) => {
+  const newPoint = { x: e.clientX, y: e.clientY };
+  if (isOutOfBounds(newPoint))
+    return;
   const tempPoints = [...points.value];
-  tempPoints.push({ x: e.clientX, y: e.clientY });
+  tempPoints.push(newPoint);
   tempPoints.sort((p1, p2) => p1.x - p2.x);
   points.value = tempPoints;
 }
