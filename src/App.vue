@@ -1,159 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, Ref } from 'vue';
-import DraggablePoint from './components/DraggablePoint.vue';
-import { Point, cubicSplineInterpolation, getSVGPathForSpline } from "./utils/cubicSplineInterpolation";
-import { solveCubic } from './utils/cubicSolver';
+import { ref } from 'vue'; 
+import CurveCanvas from './components/CurveCanvas.vue';
+import { CubicSplineInterpolationResult } from './utils/cubicSplineInterpolation';
 
-type BlockableDraggablePoint = {
-  x: number,
-  y: number,
-  blockX?: boolean,
-  blockY?: boolean
-};
+const polynomials = ref<CubicSplineInterpolationResult>([]);
 
-const size = {
-  width: 500,
-  height: 500
-};
-const pointRadius = 5;
-
-const isOutOfBounds = (p: Point, ignoreXAxis = false, ignoreYAxis = false) => {
-  if (!ignoreXAxis && (p.x < 0 || p.x > size.width))
-    return true;
-  if (!ignoreYAxis && (p.y < 0 || p.y > size.height))
-    return true;
-  return false;
+const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
+  polynomials.value = [...ps];
 }
 
-const initialPoints : BlockableDraggablePoint[] = [
-  { x: 0, y: 0, blockX: true },
-  { x: size.width, y: size.height, blockX: true  },
-]
-
-const points = ref(initialPoints);
-const sortedPoints = computed(() => {
-  const tempPoints = [...points.value];
-  tempPoints.sort((p1, p2) => p1.x - p2.x);
-  return tempPoints;
-});
-
-const currentDraggablePointIndex : Ref<number | null> = ref(null);
-
-const cubicPolynomials = computed(() => {
-  let prevPoint = sortedPoints.value[0];
-  const tempPoints : Point[] = [{ x : sortedPoints.value[0].x, y: sortedPoints.value[0].y }];
-  for (let i = 1; i < sortedPoints.value.length; i++) {
-    if (prevPoint.x === sortedPoints.value[i].x)
-      tempPoints.push({ x : sortedPoints.value[i].x + 1, y: sortedPoints.value[i].y });
-    else
-      tempPoints.push({ x : sortedPoints.value[i].x, y: sortedPoints.value[i].y });
-    prevPoint = sortedPoints.value[i];
-  }
-  return cubicSplineInterpolation(tempPoints);
-});
-const svgPath = computed(() => getSVGPathForSpline(cubicPolynomials.value, sortedPoints.value));
-
-// Line to show culling negatives to zero or max value
-const curveOutOfBoundPoints = computed(() => {
-  const pointsOutOfBounds : Point[][] = [];
-  // with lower bound
-  cubicPolynomials.value.forEach(p => {
-    const solutionsWithZero = solveCubic(p.polynomial.A, p.polynomial.B, p.polynomial.C, p.polynomial.D);
-    if (solutionsWithZero.length < 2) return;  // avoid unnecessary calculations
-    const cubicSolutions : Point[] = [];
-    solutionsWithZero.forEach(point => {
-      if (point >= p.range.xmin && point <= p.range.xmax)
-        cubicSolutions.push({ x: point, y: 0 });
-    });
-    if (cubicSolutions.length == 2)  // we want to draw line between only two points
-      pointsOutOfBounds.push(cubicSolutions);
-  });
-  // with upper bound
-  cubicPolynomials.value.forEach(p => {
-    const solutionsWithMax = solveCubic(p.polynomial.A, p.polynomial.B, p.polynomial.C, p.polynomial.D - size.height);
-    if (solutionsWithMax.length < 2) return;  // avoid unnecessary calculations
-    const cubicSolutions : Point[] = [];
-    solutionsWithMax.forEach(point => {
-      if (point >= p.range.xmin && point <= p.range.xmax)
-        cubicSolutions.push({ x: point, y: size.height });
-    });
-    if (cubicSolutions.length == 2)
-      pointsOutOfBounds.push(cubicSolutions);
-  });
-  return pointsOutOfBounds;
-});
-
-const handleChangeCoords = (e : MouseEvent) => {
-  if (currentDraggablePointIndex.value === null) return;
-  const currentPoint = points.value[currentDraggablePointIndex.value];
-  const newXPosition = e.clientX - pointRadius;
-  const newYPosition = size.height - e.clientY + pointRadius;
-  if (currentPoint.blockX) {
-    if (!isOutOfBounds({ x: newXPosition, y: newYPosition }, true)) {
-      currentPoint.y = newYPosition;
-    }
-  } else {
-    if (!isOutOfBounds({ x: newXPosition, y: newYPosition })) {
-      currentPoint.x = newXPosition;
-      currentPoint.y = newYPosition;
-    }
-  }
-}
-
-const handleStartDragging = (pointIndex : number) => {
-  currentDraggablePointIndex.value = pointIndex;
-};
-
-const handleStopDragging = () => {
-  currentDraggablePointIndex.value = null;
-};
-
-const handleNotPointMouseDown = (e : MouseEvent) => {
-  const newPoint = { x: e.clientX - pointRadius, y: size.height - e.clientY + pointRadius };
-  if (isOutOfBounds(newPoint))
-    return;
-  const tempPoints = [...points.value];
-  tempPoints.push(newPoint);
-  tempPoints.sort((p1, p2) => p1.x - p2.x);
-  points.value = tempPoints;
-}
 </script>
 
 <template>
-  <div class="curve-canvas-container" :style="{ height: size.height+'px', width: size.width+'px' }"
-    @mouseup="handleStopDragging"
-    @mousemove="handleChangeCoords"
-    @mousedown="handleNotPointMouseDown"
-  >
-    <svg class="curve-canvas">
-      <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
-      <line v-for="p in curveOutOfBoundPoints" 
-        :x1="p[0].x" :y1="p[0].y" :x2="p[1].x" :y2="p[1].y" 
-        stroke="#FAFAFA" stroke-width="4"
-      />
-      <DraggablePoint 
-        v-for="(p, i) in points" 
-        :key="i"
-        :point="p" 
-        :radius="pointRadius"
-        @startDragging="() => handleStartDragging(i)"
-      />
-    </svg>
-  </div>
-  <p>{{ points }}</p>
+  <CurveCanvas 
+    @curve-changed="onCurveChanged"
+  />
+  <p v-for="p in polynomials">{{ p }}</p>
 </template>
 
 <style scoped>
-.curve-canvas-container {
-  background-color: #5C5C5C;
-  border: 5px solid #5C5C5C;
-}
 
-.curve-canvas {
-  background-color: #5C5C5C;
-  transform-origin: center center;
-  transform: scale(1, -1);
-  height: 100%;
-  width: 100%;
-}
 </style>
