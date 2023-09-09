@@ -21,6 +21,20 @@ onMounted(() => {
   }
 })
 
+const affectRedChannel = true;
+const affectGreenChannel = true;
+const affectBlueChannel = true;
+
+const correctColor = (oldValue: number, ps: CubicSplineInterpolationResult) => {
+  let newBlueVal = evaluateInterpolationAtPoint(oldValue, ps);
+  if (newBlueVal != null) {
+    if (newBlueVal > 255)
+      newBlueVal = 255;
+    if (newBlueVal < 0)
+      newBlueVal = 0;
+  }
+  return newBlueVal;
+}
 
 const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
   if (ctx.value != null && imageCanvas.value != null) {
@@ -28,16 +42,12 @@ const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
     const imageData = ctx.value.getImageData(0, 0, imageCanvas.value.width, imageCanvas.value.height);
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
-      // data[i] = 255 - data[i]; // red
-      // data[i + 1] = 255 - data[i + 1]; // green
-      let newBlueVal = evaluateInterpolationAtPoint(data[i+2], ps);
-      if (newBlueVal != null) {
-        if (newBlueVal > 255)
-          newBlueVal = 255;
-        if (newBlueVal < 0)
-          newBlueVal = 0;
-        data[i + 2] = newBlueVal;
-      }
+      if (affectRedChannel)
+        data[i] = correctColor(data[i], ps) ?? 0;
+      if (affectGreenChannel)
+        data[i + 1] = correctColor(data[i+1], ps) ?? 0;
+      if (affectBlueChannel)
+        data[i + 2] = correctColor(data[i+2], ps) ?? 0;
     }
     ctx.value.putImageData(imageData, 0, 0);
   }
