@@ -151,18 +151,18 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
         <!-- Grid -->
         <line v-for="i in (4-1)" 
             :x1="i*size.width/4" :y1="0" :x2="i*size.width/4" :y2="size.height" 
-            stroke="#FAFAFA" stroke-width="1" stroke-dasharray="2,2"
+            stroke="#eeeeee" stroke-width="1" stroke-dasharray="2,2"
         />
         <line v-for="i in (4-1)" 
             :x1="0" :y1="i*size.height/4" :x2="size.width" :y2="i*size.height/4" 
-            stroke="#FAFAFA" stroke-width="1" stroke-dasharray="2,2"
+            stroke="#eeeeee" stroke-width="1" stroke-dasharray="2,2"
         />
 
         <!-- Bounds -->
-        <line :x1="0"          :y1="0"           :x2="size.width" :y2="0"           stroke="#FAFAFA" stroke-width="2" />
-        <line :x1="size.width" :y1="0"           :x2="size.width" :y2="size.height" stroke="#FAFAFA" stroke-width="2" />
-        <line :x1="size.width" :y1="size.height" :x2="0"          :y2="size.height" stroke="#FAFAFA" stroke-width="2" />
-        <line :x1="0"          :y1="size.height" :x2="0"          :y2="0"           stroke="#FAFAFA" stroke-width="2" />
+        <line :x1="0"          :y1="0"           :x2="size.width" :y2="0"           stroke="#eeeeee" stroke-width="2" />
+        <line :x1="size.width" :y1="0"           :x2="size.width" :y2="size.height" stroke="#eeeeee" stroke-width="2" />
+        <line :x1="size.width" :y1="size.height" :x2="0"          :y2="size.height" stroke="#eeeeee" stroke-width="2" />
+        <line :x1="0"          :y1="size.height" :x2="0"          :y2="0"           stroke="#eeeeee" stroke-width="2" />
 
         <!-- Curve -->
         <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
@@ -184,12 +184,12 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
 
 <style scoped>
 .curve-canvas-container {
-  background-color: #5C5C5C;
-  border: 5px solid #5C5C5C;
+  background-color: #333333;
+  border: 5px solid #333333;
 }
 
 .curve-canvas {
-  background-color: #5C5C5C;
+  background-color: #333333;
   transform-origin: center center;
   transform: scale(1, -1);
   height: 100%;
