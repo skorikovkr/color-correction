@@ -20,8 +20,8 @@ const props = defineProps({
     size: {
         type: Object as PropType<Size>,
         default: {
-            width: 500,
-            height: 500
+            width: 512,
+            height: 512
         }
     },
     pointRadius: {
