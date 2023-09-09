@@ -46,8 +46,8 @@ const initialPoints : BlockableDraggablePoint[] = [
   { x: 0, y: 0, blockX: true },
   { x: props.size.width, y: props.size.height, blockX: true  },
 ]
-
 const points = ref(initialPoints);
+
 const sortedPoints = computed(() => {
   const tempPoints = [...points.value];
   tempPoints.sort((p1, p2) => p1.x - p2.x);
@@ -108,8 +108,8 @@ const curveOutOfBoundPoints = computed(() => {
 const handleChangeCoords = (e : MouseEvent) => {
   if (currentDraggablePointIndex.value === null) return;
   const currentPoint = points.value[currentDraggablePointIndex.value];
-  const newXPosition = e.clientX - 2*props.pointRadius;
-  const newYPosition = props.size.height - e.clientY + 2*props.pointRadius;
+  const newXPosition = e.offsetX;
+  const newYPosition = e.offsetY;
   if (currentPoint.blockX) {
     if (!isOutOfBounds({ x: newXPosition, y: newYPosition }, true)) {
       currentPoint.y = newYPosition;
@@ -131,7 +131,7 @@ const handleStopDragging = () => {
 };
 
 const handleNotPointMouseDown = (e : MouseEvent) => {
-  const newPoint = { x: e.clientX - props.pointRadius, y: props.size.height - e.clientY + props.pointRadius };
+  const newPoint = { x: e.offsetX, y: e.offsetY };
   if (isOutOfBounds(newPoint))
     return;
   const tempPoints = [...points.value];
@@ -139,6 +139,18 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
   tempPoints.sort((p1, p2) => p1.x - p2.x);
   points.value = tempPoints;
 }
+
+const handleMouseLeave = () => {
+  currentDraggablePointIndex.value = null;
+}
+
+const reset = () => {
+  points.value = initialPoints;
+}
+
+defineExpose({
+  reset
+});
 </script>
 
 <template>
@@ -146,6 +158,7 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
     @mouseup="handleStopDragging"
     @mousemove="handleChangeCoords"
     @mousedown="handleNotPointMouseDown"
+    @mouseleave="handleMouseLeave"
   >
     <svg class="curve-canvas">
         <!-- Grid -->
@@ -186,6 +199,8 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
 .curve-canvas-container {
   background-color: #333333;
   border: 5px solid #333333;
+  margin-left: 50px;
+  margin-top: 50px;
 }
 
 .curve-canvas {
