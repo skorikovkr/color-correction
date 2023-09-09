@@ -58,6 +58,7 @@ const currentDraggablePointIndex : Ref<number | null> = ref(null);
 
 const cubicPolynomials = computed(() => {
   let prevPoint = sortedPoints.value[0];
+  // avoid curve distortion on two point.x equality
   const tempPoints : Point[] = [{ x : sortedPoints.value[0].x, y: sortedPoints.value[0].y }];
   for (let i = 1; i < sortedPoints.value.length; i++) {
     if (prevPoint.x === sortedPoints.value[i].x)
@@ -70,6 +71,7 @@ const cubicPolynomials = computed(() => {
   emit('curveChanged', result);
   return result;
 });
+
 const svgPath = computed(() => getSVGPathForSpline(cubicPolynomials.value, sortedPoints.value));
 
 // Line to show culling negatives to zero or max value
@@ -146,18 +148,36 @@ const handleNotPointMouseDown = (e : MouseEvent) => {
     @mousedown="handleNotPointMouseDown"
   >
     <svg class="curve-canvas">
-      <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
-      <line v-for="p in curveOutOfBoundPoints" 
-        :x1="p[0].x" :y1="p[0].y" :x2="p[1].x" :y2="p[1].y" 
-        stroke="#FAFAFA" stroke-width="4"
-      />
-      <DraggablePoint 
-        v-for="(p, i) in points" 
-        :key="i"
-        :point="p" 
-        :radius="pointRadius"
-        @startDragging="() => handleStartDragging(i)"
-      />
+        <!-- Grid -->
+        <line v-for="i in (4-1)" 
+            :x1="i*size.width/4" :y1="0" :x2="i*size.width/4" :y2="size.height" 
+            stroke="#FAFAFA" stroke-width="1" stroke-dasharray="2,2"
+        />
+        <line v-for="i in (4-1)" 
+            :x1="0" :y1="i*size.height/4" :x2="size.width" :y2="i*size.height/4" 
+            stroke="#FAFAFA" stroke-width="1" stroke-dasharray="2,2"
+        />
+
+        <!-- Bounds -->
+        <line :x1="0"          :y1="0"           :x2="size.width" :y2="0"           stroke="#FAFAFA" stroke-width="2" />
+        <line :x1="size.width" :y1="0"           :x2="size.width" :y2="size.height" stroke="#FAFAFA" stroke-width="2" />
+        <line :x1="size.width" :y1="size.height" :x2="0"          :y2="size.height" stroke="#FAFAFA" stroke-width="2" />
+        <line :x1="0"          :y1="size.height" :x2="0"          :y2="0"           stroke="#FAFAFA" stroke-width="2" />
+
+        <!-- Curve -->
+        <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
+        <line v-for="p in curveOutOfBoundPoints" 
+            :x1="p[0].x" :y1="p[0].y" :x2="p[1].x" :y2="p[1].y" 
+            stroke="#FAFAFA" stroke-width="4"
+        />
+        
+        <!-- Points -->
+        <DraggablePoint 
+            v-for="(p, i) in points"
+            :point="p" 
+            :radius="pointRadius"
+            @startDragging="() => handleStartDragging(i)"
+        />
     </svg>
   </div>
 </template>
