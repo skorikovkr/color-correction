@@ -46,7 +46,7 @@ const initialPoints : BlockableDraggablePoint[] = [
   { x: 0, y: 0, blockX: true },
   { x: props.size.width, y: props.size.height, blockX: true  },
 ]
-const points = ref(initialPoints);
+const points = ref(initialPoints.map(p => ({...p})));
 
 const sortedPoints = computed(() => {
   const tempPoints = [...points.value];
@@ -145,7 +145,7 @@ const handleMouseLeave = () => {
 }
 
 const reset = () => {
-  points.value = initialPoints;
+  points.value = initialPoints.map(p => ({...p}));
 }
 
 defineExpose({

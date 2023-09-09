@@ -189,3 +189,11 @@ export const getSVGPathForSpline = (cubicPolynomials: CubicSplineInterpolationRe
 	}
 	return path.join(' ');
 }
+
+export const evaluateInterpolationAtPoint = (x: number, polynomials: CubicSplineInterpolationResult) => {
+	for (let i = 0; i < polynomials.length; i++) {
+		if (x <= polynomials[i].range.xmax && x >= polynomials[i].range.xmin) {
+			return polynomials[i].polynomial.evaluateAt(x);
+		}
+	}
+}
