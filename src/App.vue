@@ -12,6 +12,16 @@ const curveCanvasSize = {
   width: 512,
 }
 const ratioTo255 = curveCanvasSize.width / 256;  // assuming interpolation always start in x:0
+const colorCount = {
+  R: Array.from({ length: 256 }, () => 0),
+  G: Array.from({ length: 256 }, () => 0),
+  B: Array.from({ length: 256 }, () => 0),
+  RGB: Array.from({ length: 256 }, () => 0),
+  maxR: 0,
+  maxG: 0,
+  maxB: 0,
+  maxRGB: 0,
+};
 
 const img = ref<HTMLImageElement>(new Image());
 img.value.src = "/src/assets/example.jpg";
@@ -23,6 +33,33 @@ onMounted(() => {
     ctx.value = imageCanvas.value.getContext("2d", { willReadFrequently: true });
     img.value.onload = () => {
       ctx.value?.drawImage(img.value, 0, 0);
+      const imageData = ctx.value?.getImageData(0, 0, img.value.width, img.value.height);
+      const data = imageData?.data;
+      if (data) {
+        for (let i = 0; i < data.length; i += 4) {
+          colorCount.R[data[i]]++;
+          if (colorCount.R[data[i]] > colorCount.maxR)
+            colorCount.maxR = colorCount.R[data[i]];
+
+          colorCount.G[data[i+1]]++;
+          if (colorCount.G[data[i+1]] > colorCount.maxG)
+            colorCount.maxG = colorCount.G[data[i+1]];
+
+          colorCount.B[data[i+2]]++;
+          if (colorCount.B[data[i+2]] > colorCount.maxB)
+            colorCount.maxB = colorCount.B[data[i+2]];
+
+          colorCount.RGB[data[i]]++;
+          colorCount.RGB[data[i+1]]++;
+          colorCount.RGB[data[i+2]]++;
+          if (colorCount.RGB[data[i]] > colorCount.maxRGB)
+            colorCount.maxRGB = colorCount.RGB[data[i]];
+          if (colorCount.RGB[data[i+1]] > colorCount.maxRGB)
+            colorCount.maxRGB = colorCount.RGB[data[i+1]];
+          if (colorCount.RGB[data[i+2]] > colorCount.maxRGB)
+            colorCount.maxRGB = colorCount.RGB[data[i+2]];
+        }
+      }
     };
   }
 })
@@ -105,6 +142,7 @@ const handleDecontrastClick = () => {
         height: curveCanvasSize.height,
         width: curveCanvasSize.width,
       }"
+      :colorHistogram="colorCount"
       @curve-changed="onCurveChanged"
     />
     <canvas ref="imageCanvas"></canvas>

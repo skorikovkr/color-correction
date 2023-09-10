@@ -12,22 +12,37 @@ type BlockableDraggablePoint = {
 };
 
 type Size = {
-    height: number,
-    width: number
+  height: number,
+  width: number
+}
+
+type ColorHistogram = {
+  R: number[],
+  G: number[],
+  B: number[],
+  RGB: number[],
+  maxR: number,
+  maxG: number,
+  maxB: number,
+  maxRGB: number,
 }
 
 const props = defineProps({
-    size: {
-        type: Object as PropType<Size>,
-        default: {
-            width: 512,
-            height: 512
-        }
-    },
-    pointRadius: {
-        type: Number,
-        default: 7
-    },
+  size: {
+    type: Object as PropType<Size>,
+    default: {
+        width: 512,
+        height: 512
+    }
+  },
+  colorHistogram: {
+    type: Object as PropType<ColorHistogram>,
+    required: false
+  },
+  pointRadius: {
+    type: Number,
+    default: 7
+  },
 });
 
 const emit = defineEmits<{
@@ -191,6 +206,16 @@ defineExpose({
         <line :x1="size.width" :y1="0"           :x2="size.width" :y2="size.height" stroke="#eeeeee" stroke-width="2" />
         <line :x1="size.width" :y1="size.height" :x2="0"          :y2="size.height" stroke="#eeeeee" stroke-width="2" />
         <line :x1="0"          :y1="size.height" :x2="0"          :y2="0"           stroke="#eeeeee" stroke-width="2" />
+
+        <!-- Histogram -->
+        <rect 
+          v-for="(value, i) in (colorHistogram?.RGB ?? [])" 
+          :x="(i-1) * size.width/256" 
+          :y="1"
+          :height="colorHistogram?.maxRGB === 0 ? 0 : value / (colorHistogram?.maxRGB ?? 1) * size.height"
+          :width="size.width/256"
+          fill="#666666"
+        />
 
         <!-- Curve -->
         <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
