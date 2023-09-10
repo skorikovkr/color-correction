@@ -25,32 +25,39 @@ const affectRedChannel = true;
 const affectGreenChannel = true;
 const affectBlueChannel = true;
 
-const correctColor = (oldValue: number, ps: CubicSplineInterpolationResult) => {
-  let newBlueVal = evaluateInterpolationAtPoint(oldValue, ps);
-  if (newBlueVal != null) {
-    if (newBlueVal > 255)
-      newBlueVal = 255;
-    if (newBlueVal < 0)
-      newBlueVal = 0;
-  }
+const correctColor = (oldValue: number, ps: CubicSplineInterpolationResult, ratioTo255 = 1) => {
+  let newBlueVal = evaluateInterpolationAtPoint(oldValue * ratioTo255, ps) / ratioTo255;
+  if (newBlueVal - 255 > 1e-8)
+    newBlueVal = 255;
+  if (newBlueVal < 1e-8)
+    newBlueVal = 0;
   return newBlueVal;
 }
 
+let lastRerenderTime = Date.now();
+const waitInterval = 200;
 const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
-  if (ctx.value != null && imageCanvas.value != null) {
-    ctx.value.drawImage(img.value, 0, 0);
-    const imageData = ctx.value.getImageData(0, 0, imageCanvas.value.width, imageCanvas.value.height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      if (affectRedChannel)
-        data[i] = correctColor(data[i], ps) ?? 0;
-      if (affectGreenChannel)
-        data[i + 1] = correctColor(data[i+1], ps) ?? 0;
-      if (affectBlueChannel)
-        data[i + 2] = correctColor(data[i+2], ps) ?? 0;
-    }
-    ctx.value.putImageData(imageData, 0, 0);
-  }
+  lastRerenderTime = Date.now();
+  setTimeout(() => {
+      const rerenderTime = Date.now();
+      if ((rerenderTime - lastRerenderTime) >= waitInterval) {
+        if (ctx.value != null && imageCanvas.value != null) {
+          const ratioTo255 = ps[ps.length - 1].range.xmax / 256;  // assuming interpolation always start in x:0
+          ctx.value.drawImage(img.value, 0, 0);
+          const imageData = ctx.value.getImageData(0, 0, imageCanvas.value.width, imageCanvas.value.height);
+          const data = imageData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            if (affectRedChannel)
+              data[i] = correctColor(data[i], ps, ratioTo255) ?? 0;
+            if (affectGreenChannel)
+              data[i + 1] = correctColor(data[i+1], ps, ratioTo255) ?? 0;
+            if (affectBlueChannel)
+              data[i + 2] = correctColor(data[i+2], ps, ratioTo255) ?? 0;
+          }
+          ctx.value.putImageData(imageData, 0, 0);
+        }
+      }
+  }, waitInterval);
 }
 
 const handleClick = () => {

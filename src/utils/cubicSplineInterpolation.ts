@@ -196,4 +196,5 @@ export const evaluateInterpolationAtPoint = (x: number, polynomials: CubicSpline
 			return polynomials[i].polynomial.evaluateAt(x);
 		}
 	}
+	throw new Error("Argument out of range");
 }
