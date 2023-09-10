@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'; 
 import CurveCanvas from './components/CurveCanvas.vue';
 import { CubicSplineInterpolationResult, evaluateInterpolationAtPoint } from './utils/cubicSplineInterpolation';
+import './style.css';
 
 const curveCanvas = ref<InstanceType<typeof CurveCanvas>>();
 const imageCanvas = ref<InstanceType<typeof HTMLCanvasElement>>();
@@ -97,7 +98,7 @@ const handleDecontrastClick = () => {
 </script>
 
 <template>
-  <div class="container">
+  <div class="flex gap-2 flex-auto">
     <CurveCanvas 
       ref="curveCanvas"
       :size="{
@@ -117,16 +118,5 @@ const handleDecontrastClick = () => {
 </template>
 
 <style scoped>
-.container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
-}
 
-.toolbox {
-  display: flex;
-  flex-direction: row;
-  gap: 5px;
-}
 </style>

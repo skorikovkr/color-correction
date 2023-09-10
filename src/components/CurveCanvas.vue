@@ -213,7 +213,6 @@ defineExpose({
 <style scoped>
 .curve-canvas-container {
   background-color: #333333;
-  border: 5px solid #333333;
 }
 
 .curve-canvas {
