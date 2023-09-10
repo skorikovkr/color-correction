@@ -148,8 +148,23 @@ const reset = () => {
   points.value = initialPoints.map(p => ({...p}));
 }
 
+const set = (ps : Point[]) => {
+  if (ps.length < 2) {
+    points.value = initialPoints.map(p => ({...p}));
+    throw new Error("Argument exception. Needs two or more points to build curve.");
+  }
+  if ((ps as BlockableDraggablePoint[])[0].x !== 0 || (ps as BlockableDraggablePoint[])[ps.length-1].x !== props.size.width) {
+    points.value = initialPoints.map(p => ({...p}));
+    throw new Error("Argument exception. First and last points must be at start and end of X axis.");
+  }
+  (ps as BlockableDraggablePoint[])[0].blockX = true;
+  (ps as BlockableDraggablePoint[])[0].blockY = true;
+  points.value = ps.map(p => ({...p}));
+}
+
 defineExpose({
-  reset
+  reset,
+  set
 });
 </script>
 
@@ -199,8 +214,6 @@ defineExpose({
 .curve-canvas-container {
   background-color: #333333;
   border: 5px solid #333333;
-  margin-left: 50px;
-  margin-top: 50px;
 }
 
 .curve-canvas {

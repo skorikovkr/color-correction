@@ -6,6 +6,11 @@ import { CubicSplineInterpolationResult, evaluateInterpolationAtPoint } from './
 const curveCanvas = ref<InstanceType<typeof CurveCanvas>>();
 const imageCanvas = ref<InstanceType<typeof HTMLCanvasElement>>();
 const ctx = ref<CanvasRenderingContext2D | null>();
+const curveCanvasSize = {
+  height: 512,
+  width: 512,
+}
+const ratioTo255 = curveCanvasSize.width / 256;  // assuming interpolation always start in x:0
 
 const img = ref<HTMLImageElement>(new Image());
 img.value.src = "/src/assets/example.jpg";
@@ -42,7 +47,6 @@ const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
       const rerenderTime = Date.now();
       if ((rerenderTime - lastRerenderTime) >= waitInterval) {
         if (ctx.value != null && imageCanvas.value != null) {
-          const ratioTo255 = ps[ps.length - 1].range.xmax / 256;  // assuming interpolation always start in x:0
           ctx.value.drawImage(img.value, 0, 0);
           const imageData = ctx.value.getImageData(0, 0, imageCanvas.value.width, imageCanvas.value.height);
           const data = imageData.data;
@@ -50,9 +54,9 @@ const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
             if (affectRedChannel)
               data[i] = correctColor(data[i], ps, ratioTo255) ?? 0;
             if (affectGreenChannel)
-              data[i + 1] = correctColor(data[i+1], ps, ratioTo255) ?? 0;
+              data[i+1] = correctColor(data[i+1], ps, ratioTo255) ?? 0;
             if (affectBlueChannel)
-              data[i + 2] = correctColor(data[i+2], ps, ratioTo255) ?? 0;
+              data[i+2] = correctColor(data[i+2], ps, ratioTo255) ?? 0;
           }
           ctx.value.putImageData(imageData, 0, 0);
         }
@@ -63,17 +67,66 @@ const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
 const handleClick = () => {
   curveCanvas.value?.reset();
 };
+
+const handleNegativeClick = () => {
+  curveCanvas.value?.set([
+    { x: 0, y: curveCanvasSize.height }, 
+    { x: curveCanvasSize.width, y: 0 }
+  ]);
+}
+
+const handleContrastClick = () => {
+  const contrastValue = 50;
+  curveCanvas.value?.set([
+    { x: 0, y: 0 }, 
+    { x: curveCanvasSize.width * 1/4, y: curveCanvasSize.height * 1/4 - contrastValue}, 
+    { x: curveCanvasSize.width * 3/4, y: curveCanvasSize.height * 3/4 + contrastValue }, 
+    { x: curveCanvasSize.width, y: curveCanvasSize.height }
+  ]);
+}
+
+const handleDecontrastClick = () => {
+  const decontrastValue = 50;
+  curveCanvas.value?.set([
+    { x: 0, y: 0 }, 
+    { x: curveCanvasSize.width * 1/4, y: curveCanvasSize.height * 1/4 + decontrastValue }, 
+    { x: curveCanvasSize.width * 3/4, y: curveCanvasSize.height * 3/4 - decontrastValue }, 
+    { x: curveCanvasSize.width, y: curveCanvasSize.height }
+  ]);
+}
 </script>
 
 <template>
-  <CurveCanvas 
-    ref="curveCanvas"
-    @curve-changed="onCurveChanged"
-  />
-  <button @click="handleClick">Reset</button>
-  <canvas ref="imageCanvas"></canvas>
+  <div class="container">
+    <CurveCanvas 
+      ref="curveCanvas"
+      :size="{
+        height: curveCanvasSize.height,
+        width: curveCanvasSize.width,
+      }"
+      @curve-changed="onCurveChanged"
+    />
+    <canvas ref="imageCanvas"></canvas>
+  </div>
+  <div class="toolbox">
+    <button @click="handleClick">Reset</button>
+    <button @click="handleNegativeClick">Negative</button>
+    <button @click="handleContrastClick">Contrast</button>
+    <button @click="handleDecontrastClick">Decontrast</button>
+  </div>
 </template>
 
 <style scoped>
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
 
+.toolbox {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+}
 </style>
