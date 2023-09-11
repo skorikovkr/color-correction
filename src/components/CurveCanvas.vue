@@ -11,11 +11,6 @@ type BlockableDraggablePoint = {
   blockY?: boolean
 };
 
-type Size = {
-  height: number,
-  width: number
-}
-
 type ColorHistogram = {
   R: number[],
   G: number[],
@@ -29,11 +24,8 @@ type ColorHistogram = {
 
 const props = defineProps({
   size: {
-    type: Object as PropType<Size>,
-    default: {
-        width: 512,
-        height: 512
-    }
+    type: Number,
+    default: 512
   },
   colorHistogram: {
     type: Object as PropType<ColorHistogram>,
@@ -50,16 +42,16 @@ const emit = defineEmits<{
 }>()
 
 const isOutOfBounds = (p: Point, ignoreXAxis = false, ignoreYAxis = false) => {
-  if (!ignoreXAxis && (p.x < 0 || p.x > props.size.width))
+  if (!ignoreXAxis && (p.x < 0 || p.x > props.size))
     return true;
-  if (!ignoreYAxis && (p.y < 0 || p.y > props.size.height))
+  if (!ignoreYAxis && (p.y < 0 || p.y > props.size))
     return true;
   return false;
 }
 
 const initialPoints : BlockableDraggablePoint[] = [
   { x: 0, y: 0, blockX: true },
-  { x: props.size.width, y: props.size.height, blockX: true  },
+  { x: props.size, y: props.size, blockX: true  },
 ]
 const points = ref(initialPoints.map(p => ({...p})));
 
@@ -106,13 +98,13 @@ const curveOutOfBoundPoints = computed(() => {
   });
   // with upper bound
   cubicPolynomials.value.forEach(p => {
-    const upperD = p.polynomial.D - props.size.height - 0.5;  // find solution on a little lower height for prettier look
+    const upperD = p.polynomial.D - props.size - 0.5;  // find solution on a little lower height for prettier look
     const solutionsWithMax = solveCubic(p.polynomial.A, p.polynomial.B, p.polynomial.C, upperD);
     if (solutionsWithMax.length < 2) return;  // avoid unnecessary calculations
     const cubicSolutions : Point[] = [];
     solutionsWithMax.forEach(point => {
       if (point >= p.range.xmin && point <= p.range.xmax)
-        cubicSolutions.push({ x: point, y: props.size.height });
+        cubicSolutions.push({ x: point, y: props.size });
     });
     if (cubicSolutions.length == 2)
       pointsOutOfBounds.push(cubicSolutions);
@@ -168,12 +160,12 @@ const set = (ps : Point[]) => {
     points.value = initialPoints.map(p => ({...p}));
     throw new Error("Argument exception. Needs two or more points to build curve.");
   }
-  if ((ps as BlockableDraggablePoint[])[0].x !== 0 || (ps as BlockableDraggablePoint[])[ps.length-1].x !== props.size.width) {
+  if ((ps as BlockableDraggablePoint[])[0].x !== 0 || (ps as BlockableDraggablePoint[])[ps.length-1].x !== props.size) {
     points.value = initialPoints.map(p => ({...p}));
     throw new Error("Argument exception. First and last points must be at start and end of X axis.");
   }
   (ps as BlockableDraggablePoint[])[0].blockX = true;
-  (ps as BlockableDraggablePoint[])[0].blockY = true;
+  (ps as BlockableDraggablePoint[])[ps.length-1].blockX = true;
   points.value = ps.map(p => ({...p}));
 }
 
@@ -184,7 +176,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="curve-canvas-container" :style="{ height: size.height+'px', width: size.width+'px' }"
+  <div class="curve-canvas-container" :style="{ height: size+'px', width: size+'px' }"
     @mouseup="handleStopDragging"
     @mousemove="handleChangeCoords"
     @mousedown="handleNotPointMouseDown"
@@ -193,27 +185,27 @@ defineExpose({
     <svg class="curve-canvas">
         <!-- Grid -->
         <line v-for="i in (4-1)" 
-            :x1="i*size.width/4" :y1="0" :x2="i*size.width/4" :y2="size.height" 
+            :x1="i*size/4" :y1="0" :x2="i*size/4" :y2="size" 
             stroke="#eeeeee" stroke-width="1" stroke-dasharray="2,2"
         />
         <line v-for="i in (4-1)" 
-            :x1="0" :y1="i*size.height/4" :x2="size.width" :y2="i*size.height/4" 
+            :x1="0" :y1="i*size/4" :x2="size" :y2="i*size/4" 
             stroke="#eeeeee" stroke-width="1" stroke-dasharray="2,2"
         />
 
         <!-- Bounds -->
-        <line :x1="0"          :y1="0"           :x2="size.width" :y2="0"           stroke="#eeeeee" stroke-width="2" />
-        <line :x1="size.width" :y1="0"           :x2="size.width" :y2="size.height" stroke="#eeeeee" stroke-width="2" />
-        <line :x1="size.width" :y1="size.height" :x2="0"          :y2="size.height" stroke="#eeeeee" stroke-width="2" />
-        <line :x1="0"          :y1="size.height" :x2="0"          :y2="0"           stroke="#eeeeee" stroke-width="2" />
+        <line :x1="0"    :y1="0"    :x2="size" :y2="0"    stroke="#eeeeee" stroke-width="2" />
+        <line :x1="size" :y1="0"    :x2="size" :y2="size" stroke="#eeeeee" stroke-width="2" />
+        <line :x1="size" :y1="size" :x2="0"    :y2="size" stroke="#eeeeee" stroke-width="2" />
+        <line :x1="0"    :y1="size" :x2="0"    :y2="0"    stroke="#eeeeee" stroke-width="2" />
 
         <!-- Histogram -->
         <rect 
           v-for="(value, i) in (colorHistogram?.RGB ?? [])" 
-          :x="(i-1) * size.width/256" 
+          :x="(i-1) * size/256" 
           :y="1"
-          :height="colorHistogram?.maxRGB === 0 ? 0 : value / (colorHistogram?.maxRGB ?? 1) * size.height"
-          :width="size.width/256"
+          :height="colorHistogram?.maxRGB === 0 ? 0 : value / (colorHistogram?.maxRGB ?? 1) * size"
+          :width="size/256"
           fill="#666666"
         />
 

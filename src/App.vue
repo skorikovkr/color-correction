@@ -7,11 +7,8 @@ import './style.css';
 const curveCanvas = ref<InstanceType<typeof CurveCanvas>>();
 const imageCanvas = ref<InstanceType<typeof HTMLCanvasElement>>();
 const ctx = ref<CanvasRenderingContext2D | null>();
-const curveCanvasSize = {
-  height: 512,
-  width: 512,
-}
-const ratioTo255 = curveCanvasSize.width / 256;  // assuming interpolation always start in x:0
+const curveCanvasSize = 256;
+const ratioTo255 = curveCanvasSize / 256;  // assuming interpolation always start in x:0
 const colorCount = {
   R: Array.from({ length: 256 }, () => 0),
   G: Array.from({ length: 256 }, () => 0),
@@ -108,28 +105,28 @@ const handleClick = () => {
 
 const handleNegativeClick = () => {
   curveCanvas.value?.set([
-    { x: 0, y: curveCanvasSize.height }, 
-    { x: curveCanvasSize.width, y: 0 }
+    { x: 0, y: curveCanvasSize }, 
+    { x: curveCanvasSize, y: 0 }
   ]);
 }
 
 const handleContrastClick = () => {
-  const contrastValue = 50;
+  const contrastValue = curveCanvasSize / 8;
   curveCanvas.value?.set([
     { x: 0, y: 0 }, 
-    { x: curveCanvasSize.width * 1/4, y: curveCanvasSize.height * 1/4 - contrastValue}, 
-    { x: curveCanvasSize.width * 3/4, y: curveCanvasSize.height * 3/4 + contrastValue }, 
-    { x: curveCanvasSize.width, y: curveCanvasSize.height }
+    { x: curveCanvasSize * 1/4, y: curveCanvasSize * 1/4 - contrastValue}, 
+    { x: curveCanvasSize * 3/4, y: curveCanvasSize * 3/4 + contrastValue }, 
+    { x: curveCanvasSize, y: curveCanvasSize }
   ]);
 }
 
 const handleDecontrastClick = () => {
-  const decontrastValue = 50;
+  const decontrastValue = curveCanvasSize / 8;
   curveCanvas.value?.set([
     { x: 0, y: 0 }, 
-    { x: curveCanvasSize.width * 1/4, y: curveCanvasSize.height * 1/4 + decontrastValue }, 
-    { x: curveCanvasSize.width * 3/4, y: curveCanvasSize.height * 3/4 - decontrastValue }, 
-    { x: curveCanvasSize.width, y: curveCanvasSize.height }
+    { x: curveCanvasSize * 1/4, y: curveCanvasSize * 1/4 + decontrastValue }, 
+    { x: curveCanvasSize * 3/4, y: curveCanvasSize * 3/4 - decontrastValue }, 
+    { x: curveCanvasSize, y: curveCanvasSize }
   ]);
 }
 </script>
@@ -138,10 +135,7 @@ const handleDecontrastClick = () => {
   <div class="flex gap-2 flex-auto">
     <CurveCanvas 
       ref="curveCanvas"
-      :size="{
-        height: curveCanvasSize.height,
-        width: curveCanvasSize.width,
-      }"
+      :size="curveCanvasSize"
       :colorHistogram="colorCount"
       @curve-changed="onCurveChanged"
     />
