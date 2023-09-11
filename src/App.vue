@@ -9,7 +9,7 @@ const imageCanvas = ref<InstanceType<typeof HTMLCanvasElement>>();
 const ctx = ref<CanvasRenderingContext2D | null>();
 const curveCanvasSize = 256;
 const ratioTo255 = curveCanvasSize / 256;  // assuming interpolation always start in x:0
-const colorCount = {
+const colorCount = ref({
   R: Array.from({ length: 256 }, () => 0),
   G: Array.from({ length: 256 }, () => 0),
   B: Array.from({ length: 256 }, () => 0),
@@ -18,44 +18,57 @@ const colorCount = {
   maxG: 0,
   maxB: 0,
   maxRGB: 0,
-};
+});
 
 const img = ref<HTMLImageElement>(new Image());
 img.value.src = "/src/assets/example.jpg";
 
 onMounted(() => {
   if (imageCanvas.value != null) {
-    imageCanvas.value.width = 512;
-    imageCanvas.value.height = 512;
     ctx.value = imageCanvas.value.getContext("2d", { willReadFrequently: true });
     img.value.onload = () => {
+      if (imageCanvas.value != null) {
+        imageCanvas.value.width = img.value.width;
+        imageCanvas.value.height = img.value.height;
+      }
       ctx.value?.drawImage(img.value, 0, 0);
       const imageData = ctx.value?.getImageData(0, 0, img.value.width, img.value.height);
       const data = imageData?.data;
       if (data) {
+        const colorCountTemp = {
+          R: Array.from({ length: 256 }, () => 0),
+          G: Array.from({ length: 256 }, () => 0),
+          B: Array.from({ length: 256 }, () => 0),
+          RGB: Array.from({ length: 256 }, () => 0),
+          maxR: 0,
+          maxG: 0,
+          maxB: 0,
+          maxRGB: 0,
+        };
         for (let i = 0; i < data.length; i += 4) {
-          colorCount.R[data[i]]++;
-          if (colorCount.R[data[i]] > colorCount.maxR)
-            colorCount.maxR = colorCount.R[data[i]];
+          colorCountTemp.R[data[i]]++;
+          if (colorCountTemp.R[data[i]] > colorCountTemp.maxR)
+          colorCountTemp.maxR = colorCountTemp.R[data[i]];
 
-          colorCount.G[data[i+1]]++;
-          if (colorCount.G[data[i+1]] > colorCount.maxG)
-            colorCount.maxG = colorCount.G[data[i+1]];
+          colorCountTemp.G[data[i+1]]++;
+          if (colorCountTemp.G[data[i+1]] > colorCountTemp.maxG)
+          colorCountTemp.maxG = colorCountTemp.G[data[i+1]];
 
-          colorCount.B[data[i+2]]++;
-          if (colorCount.B[data[i+2]] > colorCount.maxB)
-            colorCount.maxB = colorCount.B[data[i+2]];
+          colorCountTemp.B[data[i+2]]++;
+          if (colorCountTemp.B[data[i+2]] > colorCountTemp.maxB)
+          colorCountTemp.maxB = colorCountTemp.B[data[i+2]];
 
-          colorCount.RGB[data[i]]++;
-          colorCount.RGB[data[i+1]]++;
-          colorCount.RGB[data[i+2]]++;
-          if (colorCount.RGB[data[i]] > colorCount.maxRGB)
-            colorCount.maxRGB = colorCount.RGB[data[i]];
-          if (colorCount.RGB[data[i+1]] > colorCount.maxRGB)
-            colorCount.maxRGB = colorCount.RGB[data[i+1]];
-          if (colorCount.RGB[data[i+2]] > colorCount.maxRGB)
-            colorCount.maxRGB = colorCount.RGB[data[i+2]];
+          colorCountTemp.RGB[data[i]]++;
+          colorCountTemp.RGB[data[i+1]]++;
+          colorCountTemp.RGB[data[i+2]]++;
+          if (colorCountTemp.RGB[data[i]] > colorCountTemp.maxRGB)
+          colorCountTemp.maxRGB = colorCountTemp.RGB[data[i]];
+          if (colorCountTemp.RGB[data[i+1]] > colorCountTemp.maxRGB)
+          colorCountTemp.maxRGB = colorCountTemp.RGB[data[i+1]];
+          if (colorCountTemp.RGB[data[i+2]] > colorCountTemp.maxRGB)
+          colorCountTemp.maxRGB = colorCountTemp.RGB[data[i+2]];
         }
+        colorCount.value = colorCountTemp;
       }
     };
   }
