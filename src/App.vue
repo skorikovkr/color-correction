@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'; 
+import { ref } from 'vue'; 
 import CurveCanvas from './components/CurveCanvas.vue';
 import { CubicSplineInterpolationResult, evaluateInterpolationAtPoint } from './utils/cubicSplineInterpolation';
 import './style.css';
@@ -7,6 +7,7 @@ import './style.css';
 const curveCanvas = ref<InstanceType<typeof CurveCanvas>>();
 const imageCanvas = ref<InstanceType<typeof HTMLCanvasElement>>();
 const ctx = ref<CanvasRenderingContext2D | null>();
+const curveColor = ref('#FAFAFA');
 const curveCanvasSize = 256;
 const ratioTo255 = curveCanvasSize / 256;  // assuming interpolation always start in x:0
 const colorCount = ref({
@@ -21,9 +22,56 @@ const colorCount = ref({
 });
 
 const img = ref<HTMLImageElement>(new Image());
-img.value.src = "/src/assets/example.jpg";
+//img.value.src = "/src/assets/example.jpg";
 
-onMounted(() => {
+const createColorHist = (data: Uint8ClampedArray) => {
+  const colorCountTemp = {
+    R: Array.from({ length: 256 }, () => 0),
+    G: Array.from({ length: 256 }, () => 0),
+    B: Array.from({ length: 256 }, () => 0),
+    RGB: Array.from({ length: 256 }, () => 0),
+    maxR: 0,
+    maxG: 0,
+    maxB: 0,
+    maxRGB: 0,
+  };
+  for (let i = 0; i < data.length; i += 4) {
+    colorCountTemp.R[data[i]]++;
+    if (colorCountTemp.R[data[i]] > colorCountTemp.maxR)
+    colorCountTemp.maxR = colorCountTemp.R[data[i]];
+
+    colorCountTemp.G[data[i+1]]++;
+    if (colorCountTemp.G[data[i+1]] > colorCountTemp.maxG)
+    colorCountTemp.maxG = colorCountTemp.G[data[i+1]];
+
+    colorCountTemp.B[data[i+2]]++;
+    if (colorCountTemp.B[data[i+2]] > colorCountTemp.maxB)
+    colorCountTemp.maxB = colorCountTemp.B[data[i+2]];
+
+    colorCountTemp.RGB[data[i]]++;
+    colorCountTemp.RGB[data[i+1]]++;
+    colorCountTemp.RGB[data[i+2]]++;
+    if (colorCountTemp.RGB[data[i]] > colorCountTemp.maxRGB)
+    colorCountTemp.maxRGB = colorCountTemp.RGB[data[i]];
+    if (colorCountTemp.RGB[data[i+1]] > colorCountTemp.maxRGB)
+    colorCountTemp.maxRGB = colorCountTemp.RGB[data[i+1]];
+    if (colorCountTemp.RGB[data[i+2]] > colorCountTemp.maxRGB)
+    colorCountTemp.maxRGB = colorCountTemp.RGB[data[i+2]];
+  }
+  colorCount.value = colorCountTemp;
+}
+
+const handleOpenImage = (e: Event) => {
+  if (e.target != null) {
+    const files = (e.target as HTMLInputElement)?.files;
+    if (files == null) return;
+    const file = files[0];
+    loadImage(file);
+  }
+} 
+
+const loadImage = (file: File) => {
+  img.value.src = URL.createObjectURL(file);
   if (imageCanvas.value != null) {
     ctx.value = imageCanvas.value.getContext("2d", { willReadFrequently: true });
     img.value.onload = () => {
@@ -35,44 +83,11 @@ onMounted(() => {
       const imageData = ctx.value?.getImageData(0, 0, img.value.width, img.value.height);
       const data = imageData?.data;
       if (data) {
-        const colorCountTemp = {
-          R: Array.from({ length: 256 }, () => 0),
-          G: Array.from({ length: 256 }, () => 0),
-          B: Array.from({ length: 256 }, () => 0),
-          RGB: Array.from({ length: 256 }, () => 0),
-          maxR: 0,
-          maxG: 0,
-          maxB: 0,
-          maxRGB: 0,
-        };
-        for (let i = 0; i < data.length; i += 4) {
-          colorCountTemp.R[data[i]]++;
-          if (colorCountTemp.R[data[i]] > colorCountTemp.maxR)
-          colorCountTemp.maxR = colorCountTemp.R[data[i]];
-
-          colorCountTemp.G[data[i+1]]++;
-          if (colorCountTemp.G[data[i+1]] > colorCountTemp.maxG)
-          colorCountTemp.maxG = colorCountTemp.G[data[i+1]];
-
-          colorCountTemp.B[data[i+2]]++;
-          if (colorCountTemp.B[data[i+2]] > colorCountTemp.maxB)
-          colorCountTemp.maxB = colorCountTemp.B[data[i+2]];
-
-          colorCountTemp.RGB[data[i]]++;
-          colorCountTemp.RGB[data[i+1]]++;
-          colorCountTemp.RGB[data[i+2]]++;
-          if (colorCountTemp.RGB[data[i]] > colorCountTemp.maxRGB)
-          colorCountTemp.maxRGB = colorCountTemp.RGB[data[i]];
-          if (colorCountTemp.RGB[data[i+1]] > colorCountTemp.maxRGB)
-          colorCountTemp.maxRGB = colorCountTemp.RGB[data[i+1]];
-          if (colorCountTemp.RGB[data[i+2]] > colorCountTemp.maxRGB)
-          colorCountTemp.maxRGB = colorCountTemp.RGB[data[i+2]];
-        }
-        colorCount.value = colorCountTemp;
+        createColorHist(data);
       }
     };
   }
-})
+};
 
 const affectRedChannel = ref(true);
 const affectGreenChannel = ref(true);
@@ -161,24 +176,28 @@ const handleDecontrastClick = () => {
 }
 
 const handleRGBChannelClick = () => {
+  curveColor.value = '#FAFAFA';
   affectRedChannel.value = true;
   affectGreenChannel.value = true;
   affectBlueChannel.value = true;
 }
 
 const handleRChannelClick = () => {
+  curveColor.value = '#FF0000';
   affectRedChannel.value = true;
   affectGreenChannel.value = false;
   affectBlueChannel.value = false;
 }
 
 const handleGChannelClick = () => {
+  curveColor.value = '#00FF00';
   affectRedChannel.value = false;
   affectGreenChannel.value = true;
   affectBlueChannel.value = false;
 }
 
 const handleBChannelClick = () => {
+  curveColor.value = '#148aff';
   affectRedChannel.value = false;
   affectGreenChannel.value = false;
   affectBlueChannel.value = true;
@@ -186,28 +205,32 @@ const handleBChannelClick = () => {
 </script>
 
 <template>
-  <div class="flex gap-2 flex-auto">
-    <CurveCanvas 
-      ref="curveCanvas"
-      :size="curveCanvasSize"
-      :colorHistogram="colorCount"
-      @curve-changed="onCurveChanged"
-    />
+  <input type="file" @change="handleOpenImage"/>
+  <div class="flex gap-2 flex-auto mt-2">
+    <div>
+      <CurveCanvas 
+        ref="curveCanvas"
+        :size="curveCanvasSize"
+        :colorHistogram="colorCount"
+        :curve-color="curveColor"
+        @curve-changed="onCurveChanged"
+      />
+      <span>Presets:</span>
+      <div class="toolbox flex gap-2 ml-2 flex-auto">
+        <button @click="handleClick">Reset</button>
+        <button @click="handleNegativeClick">Negative</button>
+        <button @click="handleContrastClick">Contrast</button>
+        <button @click="handleDecontrastClick">Decontrast</button>
+      </div>
+      <span>Channels:</span>
+      <div class="channels flex gap-2 ml-2 flex-auto">
+        <button @click="handleRGBChannelClick">RGB</button>
+        <button @click="handleRChannelClick">R</button>
+        <button @click="handleGChannelClick">G</button>
+        <button @click="handleBChannelClick">B</button>
+      </div>
+    </div>
     <canvas ref="imageCanvas"></canvas>
-  </div>
-  <span>Presets:</span>
-  <div class="toolbox flex gap-2 ml-2 flex-auto">
-    <button @click="handleClick">Reset</button>
-    <button @click="handleNegativeClick">Negative</button>
-    <button @click="handleContrastClick">Contrast</button>
-    <button @click="handleDecontrastClick">Decontrast</button>
-  </div>
-  <span>Channels:</span>
-  <div class="channels flex gap-2 ml-2 flex-auto">
-    <button @click="handleRGBChannelClick">RGB</button>
-    <button @click="handleRChannelClick">R</button>
-    <button @click="handleGChannelClick">G</button>
-    <button @click="handleBChannelClick">B</button>
   </div>
 </template>
 

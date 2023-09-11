@@ -35,6 +35,10 @@ const props = defineProps({
     type: Number,
     default: 7
   },
+  curveColor: {
+    type: String,
+    default: '#FAFAFA'
+  }
 });
 
 const emit = defineEmits<{
@@ -210,10 +214,10 @@ defineExpose({
         />
 
         <!-- Curve -->
-        <path :d="svgPath" fill="none" stroke="#FAFAFA" stroke-width="2"></path>
+        <path :d="svgPath" fill="none" :stroke="curveColor" stroke-width="2"></path>
         <line v-for="p in curveOutOfBoundPoints" 
             :x1="p[0].x" :y1="p[0].y" :x2="p[1].x" :y2="p[1].y" 
-            stroke="#FAFAFA" stroke-width="4"
+            :stroke="curveColor" stroke-width="4"
         />
         
         <!-- Points -->
@@ -221,6 +225,7 @@ defineExpose({
             v-for="(p, i) in points"
             :point="p" 
             :radius="pointRadius"
+            :color="curveColor"
             @startDragging="() => handleStartDragging(i)"
         />
     </svg>
