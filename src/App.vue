@@ -74,41 +74,58 @@ onMounted(() => {
   }
 })
 
-const affectRedChannel = true;
-const affectGreenChannel = true;
-const affectBlueChannel = true;
+const affectRedChannel = ref(true);
+const affectGreenChannel = ref(true);
+const affectBlueChannel = ref(true);
 
-const correctColor = (oldValue: number, ps: CubicSplineInterpolationResult, ratioTo255 = 1) => {
-  let newBlueVal = evaluateInterpolationAtPoint(oldValue * ratioTo255, ps) / ratioTo255;
-  if (newBlueVal - 255 > 1e-8)
-    newBlueVal = 255;
-  if (newBlueVal < 1e-8)
-    newBlueVal = 0;
-  return newBlueVal;
+const correctColor = (
+  oldValue: number, 
+  valueMapperFunction: (value: number) => number,
+  ratioTo255: number
+) => {
+  let newVal = valueMapperFunction(oldValue * ratioTo255) / ratioTo255;
+  if (newVal - 255 > 1e-8)
+    newVal = 255;
+  if (newVal < 1e-8)
+    newVal = 0;
+  return newVal;
+}
+
+const rerender = (
+  redChannel: boolean, greenChannel: boolean, blueChannel: boolean,
+  redMapperFunction: (value: number) => number, greenMapperFunction: (value: number) => number, blueMapperFunction: (value: number) => number,
+) => {
+  const rerenderTime = Date.now();
+  if ((rerenderTime - lastRerenderTime) >= waitInterval) {
+    if (ctx.value != null && imageCanvas.value != null) {
+      ctx.value.drawImage(img.value, 0, 0);
+      const imageData = ctx.value.getImageData(0, 0, imageCanvas.value.width, imageCanvas.value.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        if (redChannel)
+          data[i] = correctColor(data[i], redMapperFunction, ratioTo255) ?? 0;
+        if (greenChannel)
+          data[i+1] = correctColor(data[i+1], greenMapperFunction, ratioTo255) ?? 0;
+        if (blueChannel)
+          data[i+2] = correctColor(data[i+2], blueMapperFunction, ratioTo255) ?? 0;
+      }
+      ctx.value.putImageData(imageData, 0, 0);
+    }
+  }
 }
 
 let lastRerenderTime = Date.now();
-const waitInterval = 200;
+const waitInterval = 100;
 const onCurveChanged = (ps: CubicSplineInterpolationResult) => {
   lastRerenderTime = Date.now();
+  const redChannel = affectRedChannel.value;
+  const greenChannel = affectGreenChannel.value;
+  const blueChannel = affectBlueChannel.value;
+  const redMapperFunction = (val: number) => evaluateInterpolationAtPoint(val, ps);
+  const greenMapperFunction = (val: number) => evaluateInterpolationAtPoint(val, ps);
+  const blueMapperFunction = (val: number) => evaluateInterpolationAtPoint(val, ps);
   setTimeout(() => {
-      const rerenderTime = Date.now();
-      if ((rerenderTime - lastRerenderTime) >= waitInterval) {
-        if (ctx.value != null && imageCanvas.value != null) {
-          ctx.value.drawImage(img.value, 0, 0);
-          const imageData = ctx.value.getImageData(0, 0, imageCanvas.value.width, imageCanvas.value.height);
-          const data = imageData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            if (affectRedChannel)
-              data[i] = correctColor(data[i], ps, ratioTo255) ?? 0;
-            if (affectGreenChannel)
-              data[i+1] = correctColor(data[i+1], ps, ratioTo255) ?? 0;
-            if (affectBlueChannel)
-              data[i+2] = correctColor(data[i+2], ps, ratioTo255) ?? 0;
-          }
-          ctx.value.putImageData(imageData, 0, 0);
-        }
-      }
+    rerender(redChannel, greenChannel, blueChannel, redMapperFunction, greenMapperFunction, blueMapperFunction);
   }, waitInterval);
 }
 
@@ -142,6 +159,30 @@ const handleDecontrastClick = () => {
     { x: curveCanvasSize, y: curveCanvasSize }
   ]);
 }
+
+const handleRGBChannelClick = () => {
+  affectRedChannel.value = true;
+  affectGreenChannel.value = true;
+  affectBlueChannel.value = true;
+}
+
+const handleRChannelClick = () => {
+  affectRedChannel.value = true;
+  affectGreenChannel.value = false;
+  affectBlueChannel.value = false;
+}
+
+const handleGChannelClick = () => {
+  affectRedChannel.value = false;
+  affectGreenChannel.value = true;
+  affectBlueChannel.value = false;
+}
+
+const handleBChannelClick = () => {
+  affectRedChannel.value = false;
+  affectGreenChannel.value = false;
+  affectBlueChannel.value = true;
+}
 </script>
 
 <template>
@@ -154,11 +195,19 @@ const handleDecontrastClick = () => {
     />
     <canvas ref="imageCanvas"></canvas>
   </div>
-  <div class="toolbox">
+  <span>Presets:</span>
+  <div class="toolbox flex gap-2 ml-2 flex-auto">
     <button @click="handleClick">Reset</button>
     <button @click="handleNegativeClick">Negative</button>
     <button @click="handleContrastClick">Contrast</button>
     <button @click="handleDecontrastClick">Decontrast</button>
+  </div>
+  <span>Channels:</span>
+  <div class="channels flex gap-2 ml-2 flex-auto">
+    <button @click="handleRGBChannelClick">RGB</button>
+    <button @click="handleRChannelClick">R</button>
+    <button @click="handleGChannelClick">G</button>
+    <button @click="handleBChannelClick">B</button>
   </div>
 </template>
 
