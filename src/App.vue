@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'; 
+import { ref } from 'vue'; 
 import CurveCanvas from './components/CurveCanvas.vue';
 import { CubicSplineInterpolationResult, evaluateInterpolationAtPoint } from './utils/cubicSplineInterpolation';
 import './style.css';
+import ImageCanvas from './components/ImageCanvas.vue';
 
 const curveCanvas = ref<InstanceType<typeof CurveCanvas>>();
-const imageCanvas = ref<InstanceType<typeof HTMLCanvasElement>>();
-const inMemCanvas = document.createElement("canvas");
-let inMemContext : CanvasRenderingContext2D | null = null;
+const imageCanvas = ref<InstanceType<typeof ImageCanvas>>();
 let savedImageData : ImageData | null = null;
 let tempImageData : ImageData | null = null;
-const ctx = ref<CanvasRenderingContext2D | null>();
 const curveColor = ref('#FAFAFA');
 const curveCanvasSize = 256;
 const canvasSizeRatioTo255 = curveCanvasSize / 256;  // assuming interpolation always start in x:0
@@ -23,23 +21,6 @@ const colorCount = ref({
   maxG: 0,
   maxB: 0,
   maxRGB: 0,
-});
-const defaultColor = "#FAFAFA";
-const canvasWidth = 1000;
-const canvasHeight = 1000;
-
-const img = ref<HTMLImageElement>(new Image());
-
-onMounted(() => {
-  if (imageCanvas.value == null || inMemCanvas == null)
-    throw new Error("Error initializing canvas.");
-  ctx.value = imageCanvas.value.getContext("2d", { willReadFrequently: true });
-  inMemContext = inMemCanvas.getContext("2d", { willReadFrequently: true });
-  if (inMemContext == null || ctx.value == null)
-    throw new Error("Error getting canvas context.");
-  imageCanvas.value.width = canvasWidth;
-  imageCanvas.value.height = canvasHeight;
-  draw();
 });
 
 const createColorHist = (data: Uint8ClampedArray) => {
@@ -80,31 +61,20 @@ const createColorHist = (data: Uint8ClampedArray) => {
 }
 
 const handleOpenImage = (e: Event) => {
-  if (e.target != null) {
+  if (e.target != null && imageCanvas.value != null) {
     const files = (e.target as HTMLInputElement)?.files;
     if (files == null) return;
     const file = files[0];
-    loadImage(file);
+    imageCanvas.value.loadImage(file);
   }
 } 
 
-const loadImage = (file: File) => {
-  img.value.src = URL.createObjectURL(file);
-  if (imageCanvas.value != null) {
-    img.value.onload = () => {
-      if (ctx.value == null || inMemContext == null)
-        throw new Error("Canvas context is null.");
-      inMemCanvas.width = img.value.width;
-      inMemCanvas.height = img.value.height;
-      inMemContext.drawImage(img.value, 0, 0)
-      const imageData = inMemContext.getImageData(0, 0, img.value.width, img.value.height);
-      createColorHist(imageData.data);
-      savedImageData = new ImageData(imageData.data, img.value.width, img.value.height);
-      tempImageData = new ImageData(imageData.data, img.value.width, img.value.height);
-      draw();
-    };
-  }
-};
+const handleImageLoaded = (data: ImageData) => {
+  savedImageData = new ImageData(data.data, data.width);
+  tempImageData = new ImageData(data.data, data.width);
+  createColorHist(savedImageData.data);
+  imageCanvas.value?.draw(savedImageData);
+}
 
 const affectRedChannel = ref(true);
 const affectGreenChannel = ref(true);
@@ -129,20 +99,19 @@ const render = (
 ) => {
   const rerenderTime = Date.now();
   if ((rerenderTime - lastRerenderTime) >= waitInterval) {
-    if (ctx.value != null && imageCanvas.value != null) {
-      if (savedImageData == null) return;
-      const data = new Uint8ClampedArray(savedImageData.data);
-      for (let i = 0; i < data.length; i += 4) {
-        if (redChannel)
-          data[i] = correctColor(data[i], redMapperFunction, canvasSizeRatioTo255) ?? 0;
-        if (greenChannel)
-          data[i+1] = correctColor(data[i+1], greenMapperFunction, canvasSizeRatioTo255) ?? 0;
-        if (blueChannel)
-          data[i+2] = correctColor(data[i+2], blueMapperFunction, canvasSizeRatioTo255) ?? 0;
-      }
-      tempImageData = new ImageData(data, img.value.width);
-      draw();
+    if (savedImageData == null) return;
+    const data = new Uint8ClampedArray(savedImageData.data);
+    for (let i = 0; i < data.length; i += 4) {
+      if (redChannel)
+        data[i] = correctColor(data[i], redMapperFunction, canvasSizeRatioTo255) ?? 0;
+      if (greenChannel)
+        data[i+1] = correctColor(data[i+1], greenMapperFunction, canvasSizeRatioTo255) ?? 0;
+      if (blueChannel)
+        data[i+2] = correctColor(data[i+2], blueMapperFunction, canvasSizeRatioTo255) ?? 0;
     }
+    tempImageData = new ImageData(data, savedImageData.width);
+    if (imageCanvas.value != null)
+      imageCanvas.value.draw(tempImageData);
   }
 }
 
@@ -219,16 +188,6 @@ const handleBChannelClick = () => {
   affectGreenChannel.value = false;
   affectBlueChannel.value = true;
 }
-
-function draw() {
-  if (ctx.value == null || savedImageData == null || inMemContext == null) return;
-  inMemContext.putImageData(tempImageData ?? savedImageData, 0, 0);
-  ctx.value.fillStyle = defaultColor;
-  ctx.value.fillRect(0, 0, canvasWidth, canvasHeight);
-  ctx.value.imageSmoothingEnabled = false;
-  ctx.value.setTransform(100, 0, 0, 100, 0, 0);
-  ctx.value.drawImage(inMemCanvas, 0, 0);
-}
 </script>
 
 <template>
@@ -257,10 +216,12 @@ function draw() {
         <button @click="handleBChannelClick">B</button>
       </div>
     </div>
-    <canvas 
-      ref="imageCanvas" 
-      style="image-rendering: pixelated;"
-    ></canvas>
+    <div class="m-2">
+      <ImageCanvas 
+        ref="imageCanvas" 
+        @image-loaded="handleImageLoaded"
+      />
+    </div>
   </div>
 </template>
 
