@@ -208,7 +208,7 @@ defineExpose({
           v-for="(value, i) in (colorHistogram?.RGB ?? [])" 
           :x="(i-1) * size/256" 
           :y="1"
-          :height="colorHistogram?.maxRGB === 0 ? 0 : value / (colorHistogram?.maxRGB ?? 1) * size"
+          :height="colorHistogram?.maxRGB === 0 ? 0 : Math.max(value / (colorHistogram?.maxRGB ?? 1) * size - 2, 0)"
           :width="size/256"
           fill="#666666"
         />
