@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'; 
+import { ref, onMounted } from 'vue'; 
 import CurveCanvas from './components/CurveCanvas.vue';
 import { CubicSplineInterpolationResult, evaluateInterpolationAtPoint } from './utils/cubicSplineInterpolation';
 import './style.css';
@@ -11,7 +11,7 @@ let savedImageData : ImageData | null = null;
 let tempImageData : ImageData | null = null;
 const curveColor = ref('#FAFAFA');
 const curveCanvasSize = 256;
-const canvasSizeRatioTo255 = curveCanvasSize / 256;  // assuming interpolation always start in x:0
+const curveCanvasSizeRatioTo255 = curveCanvasSize / 256;  // assuming interpolation always start at x:0
 const colorCount = ref({
   R: Array.from({ length: 256 }, () => 0),
   G: Array.from({ length: 256 }, () => 0),
@@ -21,6 +21,10 @@ const colorCount = ref({
   maxG: 0,
   maxB: 0,
   maxRGB: 0,
+});
+
+onMounted(() => {
+  imageCanvas.value?.draw(tempImageData);
 });
 
 const createColorHist = (data: Uint8ClampedArray) => {
@@ -103,15 +107,14 @@ const render = (
     const data = new Uint8ClampedArray(savedImageData.data);
     for (let i = 0; i < data.length; i += 4) {
       if (redChannel)
-        data[i] = correctColor(data[i], redMapperFunction, canvasSizeRatioTo255) ?? 0;
+        data[i] = correctColor(data[i], redMapperFunction, curveCanvasSizeRatioTo255) ?? 0;
       if (greenChannel)
-        data[i+1] = correctColor(data[i+1], greenMapperFunction, canvasSizeRatioTo255) ?? 0;
+        data[i+1] = correctColor(data[i+1], greenMapperFunction, curveCanvasSizeRatioTo255) ?? 0;
       if (blueChannel)
-        data[i+2] = correctColor(data[i+2], blueMapperFunction, canvasSizeRatioTo255) ?? 0;
+        data[i+2] = correctColor(data[i+2], blueMapperFunction, curveCanvasSizeRatioTo255) ?? 0;
     }
     tempImageData = new ImageData(data, savedImageData.width);
-    if (imageCanvas.value != null)
-      imageCanvas.value.draw(tempImageData);
+    imageCanvas.value?.draw(tempImageData);
   }
 }
 
@@ -219,6 +222,8 @@ const handleBChannelClick = () => {
     <div class="m-2">
       <ImageCanvas 
         ref="imageCanvas" 
+        :width="1000" 
+        :height="1000"
         @image-loaded="handleImageLoaded"
       />
     </div>

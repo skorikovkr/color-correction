@@ -1,18 +1,70 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'; 
 
+const props = defineProps({
+  height: {
+    type: Number,
+    default: 500
+  },
+  width: {
+    type: Number,
+    default: 500
+  },
+  bgColor: {
+    type: String,
+    default: '#AAAAAA'
+  }
+});
+
+const emit = defineEmits<{
+  (e: 'imageLoaded', data: ImageData): void
+}>()
+
 const imageCanvas = ref<InstanceType<typeof HTMLCanvasElement>>();
 const inMemCanvas = document.createElement("canvas");
 let inMemContext : CanvasRenderingContext2D | null = null;
 let viewContext : CanvasRenderingContext2D | null = null;
 let img = new Image();
-const bgColor = "#FAFAFA";
-const canvasWidth = 1000;
-const canvasHeight = 1000;
+const isDragging = ref(false);
+const dragStartPosition = ref<DOMPoint | null>(new DOMPoint(0, 0));
+const currentTransformedCursor = ref<DOMPoint | null>(null);
 
-const emit = defineEmits<{
-  (e: 'imageLoaded', data: ImageData): void
-}>()
+const getTransformedPoint = (x : number, y: number) => {
+  if (viewContext == null) return null;
+  const originalPoint = new DOMPoint(x, y);
+  return viewContext?.getTransform().invertSelf().transformPoint(originalPoint);
+}
+    
+const handleMouseDown = (e : MouseEvent) => {
+  if (imageCanvas.value == null || viewContext == null) return;
+  isDragging.value = true;
+  dragStartPosition.value = getTransformedPoint(e.offsetX, e.offsetY);
+}
+
+const handleMouseMove = (e: MouseEvent) => {
+  currentTransformedCursor.value = getTransformedPoint(e.offsetX, e.offsetY);
+  if (isDragging.value && viewContext != null && currentTransformedCursor.value != null && dragStartPosition.value != null) {
+      viewContext.translate(
+        currentTransformedCursor.value.x - dragStartPosition.value.x, 
+        currentTransformedCursor.value.y - dragStartPosition.value.y
+      );
+      redrawImageCanvas();
+    }
+}
+
+const handleMouseUp = () => {
+  isDragging.value = false;
+}
+
+const handleWheel = (e : WheelEvent) => {
+  if (viewContext == null || currentTransformedCursor.value == null) return;
+  const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+  viewContext.translate(currentTransformedCursor.value.x, currentTransformedCursor.value.y);
+  viewContext.scale(zoom, zoom);
+  viewContext.translate(-currentTransformedCursor.value.x, -currentTransformedCursor.value.y);
+  redrawImageCanvas();
+  e.preventDefault();
+}
 
 onMounted(() => {
   if (imageCanvas.value == null || inMemCanvas == null)
@@ -21,8 +73,8 @@ onMounted(() => {
   inMemContext = inMemCanvas.getContext("2d", { willReadFrequently: true });
   if (inMemContext == null || viewContext == null)
     throw new Error("Error getting canvas context.");
-  imageCanvas.value.width = canvasWidth;
-  imageCanvas.value.height = canvasHeight;
+  imageCanvas.value.width = props.width;
+  imageCanvas.value.height = props.height;
 });
 
 const loadImage = (file: File) => {
@@ -41,13 +93,23 @@ const loadImage = (file: File) => {
   }
 };
 
-const draw = (data : ImageData) => {
-  if (viewContext == null || data == null || inMemContext == null) return;
+const draw = (data : ImageData | null) => {
+  if (viewContext == null || inMemContext == null) return;
+  viewContext.fillStyle = props.bgColor;
+  viewContext.fillRect(0, 0, props.width, props.height);
+  if (data == null) return;
   inMemContext.putImageData(data, 0, 0);
-  viewContext.fillStyle = bgColor;
-  viewContext.fillRect(0, 0, canvasWidth, canvasHeight);
+  redrawImageCanvas();
+}
+
+const redrawImageCanvas = () => {
+  if (viewContext == null || inMemContext == null) return;
+  viewContext.save();
+  viewContext.setTransform(1,0,0,1,0,0);
+  viewContext.fillStyle = props.bgColor;
+  viewContext.fillRect(0, 0, props.width, props.height);
+  viewContext.restore();
   viewContext.imageSmoothingEnabled = false;
-  viewContext.setTransform(30, 0, 0, 30, 0, 0);
   viewContext.drawImage(inMemCanvas, 0, 0);
 }
 
@@ -61,6 +123,11 @@ defineExpose({
     <canvas 
       ref="imageCanvas" 
       style="image-rendering: pixelated;"
+      @mousedown="handleMouseDown"
+      @mouseup="handleMouseUp"
+      @mousemove="handleMouseMove"
+      @mouseleave="handleMouseUp"
+      @wheel="handleWheel"
     ></canvas>
 </template>
 
