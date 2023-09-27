@@ -191,6 +191,13 @@ const handleBChannelClick = () => {
   affectGreenChannel.value = false;
   affectBlueChannel.value = true;
 }
+
+const handleZoomTo1 = () => {
+  imageCanvas.value?.zoomViewToPoint(1, 0, 0);
+  imageCanvas.value?.translateViewToPoint(0, 0);
+  imageCanvas.value?.redrawView();
+}
+
 </script>
 
 <template>
@@ -218,12 +225,14 @@ const handleBChannelClick = () => {
         <button @click="handleGChannelClick">G</button>
         <button @click="handleBChannelClick">B</button>
       </div>
+      <button @click="handleZoomTo1">Zoom to 1</button>
     </div>
     <div class="m-2">
       <ImageCanvas 
         ref="imageCanvas" 
         :width="1000" 
         :height="1000"
+        bg-color="#333333"
         @image-loaded="handleImageLoaded"
       />
     </div>
